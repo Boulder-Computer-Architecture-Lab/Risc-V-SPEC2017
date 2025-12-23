@@ -1,2 +1,5 @@
 # QEMU Executable
 qemu-riscv64
+
+# QEMU Compiled Plugins
+qemu_pin/**.so
