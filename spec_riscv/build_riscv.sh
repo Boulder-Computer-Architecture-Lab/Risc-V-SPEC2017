@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # Default values
+DEFAULT_CLOBBER=false           # By default, do not clobber
 DEFAULT_RISCV_PATH="/opt/riscv" # Default RISC-V installation path
 DEFAULT_BENCHMARK="all"         # Default benchmark target
 DEFAULT_BUILD_CPUS=16           # Default number of CPUs for building
 
 # --- Initialize variables with default values ---
-BENCHMARK=$DEFAULT_BENCHMARK     
+CLOBBER=$DEFAULT_CLOBBER
+BENCHMARK=$DEFAULT_BENCHMARK
 BUILD_CPUS=$DEFAULT_BUILD_CPUS
 RISCV_DIR=$DEFAULT_RISCV_PATH   
 
@@ -14,6 +16,11 @@ RISCV_DIR=$DEFAULT_RISCV_PATH
 # We loop through all arguments passed to this script ($@)
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        -c|--clobber) 
+            # If --c is found enable clobber.
+            CLOBBER=true
+            shift # Skip -c
+            ;;
         -bm|--benchmark) 
             # If --bm is found, assign the NEXT argument to BENCHMARK
             BENCHMARK="$2"
@@ -33,7 +40,8 @@ while [[ "$#" -gt 0 ]]; do
             shift # Skip the value
             ;;
         -h|--help)
-            echo "Usage: $0 [-bm|--benchmark BENCHMARK] [-j NCPUS] [-d|--dir RISCV_PATH]"
+            echo "Usage: $0 [-c|--clobber] [-bm|--benchmark BENCHMARK] [-j NCPUS] [-d|--dir RISCV_PATH]"
+            echo "  -c    : Clobber build"
             echo "  -bm   : Benchmark to build (default: $DEFAULT_BENCHMARK)"
             echo "  -j    : Number of build CPUs (default: $DEFAULT_BUILD_CPUS)"
             echo "  -d    : Path to RISC-V toolchain (default: $DEFAULT_RISCV_PATH)"
@@ -118,7 +126,12 @@ echo "Building SPEC CPU2017 benchmarks for RISC-V..."
 echo "Benchmark: $BENCHMARK"
 echo "CPUs: $BUILD_CPUS"
 
-./bin/runcpu --config=linux-rv64-cross -define build_ncpus=$BUILD_CPUS --action=build --tune=base --size=ref $BENCHMARK
+if [ "$CLOBBER" = true ]; then
+    echo "Clobbering previous builds..."
+    ./bin/runcpu --config=linux-rv64-cross -define build_ncpus=$BUILD_CPUS --action=clobber  $BENCHMARK
+else
+    ./bin/runcpu --config=linux-rv64-cross -define build_ncpus=$BUILD_CPUS --action=build --tune=base --size=ref $BENCHMARK
+fi
 
 # Restore the original PATH
 export PATH=$ORIGINAL_PATH
