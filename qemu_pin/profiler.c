@@ -27,7 +27,7 @@ struct InstructionInfo {
 GHashTable* instruction_table = NULL;
 
 // Output file name.
-static const char* output_filename = "out/instruction_profile.csv";
+static const char* output_filename = "instruction_profile.csv";
 static FILE *output_file = NULL;
 
 // Return TRUE iff the routine is valid for profiling. This filters out routines out of the program's main logic.

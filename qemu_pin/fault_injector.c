@@ -25,7 +25,7 @@ size_t target_exec_count = 0;
 size_t current_exec_count = 0;
 
 // Output file name.
-static const char* output_filename = "out/fault_result.out";
+static const char* output_filename = "fault_result.out";
 static FILE *output_file = NULL;
 
 static struct qemu_plugin_register* GetRegisterHandle()
