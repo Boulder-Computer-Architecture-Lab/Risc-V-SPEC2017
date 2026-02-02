@@ -131,6 +131,7 @@ if [ "$CLOBBER" = true ]; then
     ./bin/runcpu --config=linux-rv64-cross -define build_ncpus=$BUILD_CPUS --action=clobber  $BENCHMARK
 else
     ./bin/runcpu --config=linux-rv64-cross -define gcc_dir=$RISCV_DIR -define build_ncpus=$BUILD_CPUS --action=build --tune=base --size=ref $BENCHMARK
+    ./bin/runcpu --fake --config=linux-rv64-cross.cfg --action=run --input=ref fprate
 fi
 
 # Restore the original PATH
