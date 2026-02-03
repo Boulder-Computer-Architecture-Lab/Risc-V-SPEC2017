@@ -48,7 +48,7 @@ DEFAULT_PLUGINS_DIR = os.path.join(SCRIPT_DIR, "qemu_pin")
 DEFAULT_BENCHMARKS_DIR = os.path.join(SCRIPT_DIR, "benchmarks")
 
 # SPEC2017 installation path (for specdiff and reference outputs)
-DEFAULT_SPEC_PATH = "/home/viji2154/FaultTolerance/SPEC2017"
+DEFAULT_SPEC_PATH = "/home/viji2154/FaultTolerance/Risc-V-SPEC2017/benchmarks/"
 
 # Crash signals that indicate a real program crash (not normal exit)
 # These are the signals that QEMU propagates when the emulated program crashes
@@ -97,7 +97,7 @@ BENCHMARK_CONFIG = {
     "namd": {
         "dir": "508.namd_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/namd_r_base.riscv",
-        "args": ["--input", "apoa1.input", "--output", "apoa1.ref.output", "--iterations", "1"],
+        "args": ["--input", "apoa1.input", "--output", "apoa1.ref.output", "--iterations", "65"],
         "stdin": None,
         "spec_num": "508.namd_r",
         "outputs": [
@@ -688,9 +688,9 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[bool,
         # No outputs to compare - fall back to return code check
         return True, "No outputs defined for comparison"
     
-    specperl = os.path.join(spec_path, "bin", "specperl")
-    specdiff = os.path.join(spec_path, "bin", "harness", "specdiff")
-    ref_output_dir = os.path.join(spec_path, "benchspec", "CPU", spec_num, "data", "refrate", "output")
+    specperl = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "specperl")
+    specdiff = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "harness", "specdiff")
+    ref_output_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, spec_num, "data", "refrate", "output")
     
     if not os.path.exists(specperl):
         return False, f"specperl not found at {specperl}"
