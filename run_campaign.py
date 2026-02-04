@@ -663,7 +663,7 @@ def classify_result(baseline_retcode: int, baseline_stdout_hash: str,
         return 'sdc'  # Silent Data Corruption - different output
 
 
-def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[bool, str]:
+def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[str, str]:
     """
     Run SPEC's specdiff tool to compare output files against golden reference.
     
@@ -673,45 +673,53 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[bool,
         spec_path: Path to SPEC2017 installation
         
     Returns:
-        Tuple of (outputs_match: bool, details: str)
-        outputs_match is True if all outputs match within tolerance
+        Tuple of (result_code: str, details: str)
+        result_code is one of:
+          - 'match': All outputs match within tolerance (specdiff confirmed)
+          - 'differ': Specdiff ran and found actual differences (true SDC)
+          - 'missing_output': Output files were not generated (likely crash)
+          - 'error': Could not run specdiff (tools missing, etc.)
     """
     config = BENCHMARK_CONFIG.get(benchmark)
     if not config:
-        return False, f"Unknown benchmark: {benchmark}"
+        return 'error', f"Unknown benchmark: {benchmark}"
     
     spec_num = config.get("spec_num")
     outputs = config.get("outputs", [])
     specdiff_opts = config.get("specdiff_opts", [])
     
     if not outputs:
-        # No outputs to compare - fall back to return code check
-        return True, "No outputs defined for comparison"
+        # No outputs to compare - assume match (rely on return code check)
+        return 'match', "No outputs defined for comparison"
     
     specperl = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "specperl")
     specdiff = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "harness", "specdiff")
     ref_output_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, spec_num, "data", "refrate", "output")
     
     if not os.path.exists(specperl):
-        return False, f"specperl not found at {specperl}"
+        return 'error', f"specperl not found at {specperl}"
     if not os.path.exists(specdiff):
-        return False, f"specdiff not found at {specdiff}"
+        return 'error', f"specdiff not found at {specdiff}"
     
-    all_match = True
     details = []
+    has_missing_output = False
+    has_differ = False
+    has_error = False
     
     for generated_file, reference_file in outputs:
         gen_path = os.path.join(output_dir, generated_file)
         ref_path = os.path.join(ref_output_dir, reference_file)
         
         if not os.path.exists(gen_path):
+            # Output file missing - program likely crashed before writing it
             details.append(f"MISSING: {generated_file}")
-            all_match = False
+            has_missing_output = True
             continue
             
         if not os.path.exists(ref_path):
+            # Reference file missing - this is a setup error, not SDC
             details.append(f"REF_MISSING: {reference_file}")
-            all_match = False
+            has_error = True
             continue
         
         # Build specdiff command
@@ -730,17 +738,32 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[bool,
             if result.returncode == 0:
                 details.append(f"MATCH: {generated_file}")
             else:
+                # Specdiff found actual differences - this is true SDC
                 details.append(f"DIFFER: {generated_file}")
-                all_match = False
+                has_differ = True
                 
         except subprocess.TimeoutExpired:
-            details.append(f"TIMEOUT: {generated_file}")
-            all_match = False
+            details.append(f"SPECDIFF_TIMEOUT: {generated_file}")
+            has_error = True
         except Exception as e:
-            details.append(f"ERROR: {generated_file}: {str(e)}")
-            all_match = False
+            details.append(f"SPECDIFF_ERROR: {generated_file}: {str(e)}")
+            has_error = True
     
-    return all_match, "; ".join(details)
+    detail_str = "; ".join(details)
+    
+    # Determine overall result:
+    # - If specdiff found actual differences, it's SDC
+    # - If outputs are missing (and no differ), likely a crash
+    # - If there were errors running specdiff, report error
+    # - Otherwise, outputs match
+    if has_differ:
+        return 'differ', detail_str
+    elif has_missing_output:
+        return 'missing_output', detail_str
+    elif has_error:
+        return 'error', detail_str
+    else:
+        return 'match', detail_str
 
 
 def classify_result_specdiff(benchmark: str, fault_result: FaultResult, 
@@ -750,10 +773,13 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
     
     Categories:
     - 'same': Output matches golden reference within tolerances (fault was masked)
-    - 'sdc': Silent Data Corruption - outputs differ from golden reference
-    - 'crash': Program crashed (terminated by signal like SIGSEGV, SIGILL, etc.)
+    - 'sdc': Silent Data Corruption - specdiff found actual differences in output content
+    - 'crash': Program crashed (terminated by signal or non-zero exit code)
     - 'timeout': Program timed out
     - 'error': Error in running the experiment
+    
+    IMPORTANT: SDC is ONLY reported when specdiff actually runs and finds content differences.
+    Missing output files are treated as crashes, not SDC.
     
     Args:
         benchmark: Name of the benchmark
@@ -768,7 +794,7 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
     if fault_result.outcome == 'timeout':
         return 'timeout'
     
-    # Check for errors
+    # Check for errors in running the experiment
     if fault_result.outcome == 'error':
         return 'error'
     
@@ -780,26 +806,43 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
     if fault_result.is_signal_crash:
         return 'crash'
     
-    # Also check for negative return codes which indicate signal termination
+    # Negative return codes indicate signal termination (crash)
     if fault_result.return_code < 0:
         return 'crash'
     
     # Check if output directory exists for specdiff comparison
     if not fault_result.output_dir or not os.path.exists(fault_result.output_dir):
-        # Fall back to return code comparison if no output dir
+        # No output dir - check return code
         if fault_result.return_code != baseline_retcode:
-            return 'crash' if fault_result.return_code != 0 else 'sdc'
+            # Non-zero/unexpected return code = crash
+            return 'crash'
+        # Same return code but no output to verify - assume same (conservative)
         return 'same'
     
     # Run specdiff to compare outputs
-    outputs_match, details = run_specdiff(benchmark, fault_result.output_dir, spec_path)
+    specdiff_result, details = run_specdiff(benchmark, fault_result.output_dir, spec_path)
     
-    if outputs_match:
+    if specdiff_result == 'match':
+        # Specdiff confirmed outputs match - fault was masked
         return 'same'
-    else:
-        # Outputs differ - this is SDC (Silent Data Corruption)
-        # The program completed but produced incorrect results
+    elif specdiff_result == 'differ':
+        # Specdiff found actual content differences - TRUE SDC
+        # This is the ONLY case where we report SDC
         return 'sdc'
+    elif specdiff_result == 'missing_output':
+        # Output files missing - program likely crashed before writing them
+        # Check return code to confirm
+        if fault_result.return_code != baseline_retcode:
+            return 'crash'
+        else:
+            # Weird case: same return code but missing outputs
+            # This could be a crash that returned 0, treat as crash
+            return 'crash'
+    else:  # 'error'
+        # Error running specdiff - fall back to return code check
+        if fault_result.return_code != baseline_retcode:
+            return 'crash'
+        return 'same'
 
 
 def cleanup_output_dir(output_dir: Optional[str]):
