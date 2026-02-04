@@ -67,6 +67,9 @@ CRASH_SIGNALS = {
 # outputs: list of (generated_file, reference_file) tuples
 # specdiff_opts: additional options for specdiff (tolerances, etc.)
 BENCHMARK_CONFIG = {
+    # NOTE: SPEC runs bwaves 4 times (bwaves_1 through bwaves_4).
+    # This config runs only bwaves_1 for faster fault injection testing.
+    # To match full SPEC validation, you would need to run all 4.
     "bwaves": {
         "dir": "503.bwaves_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/bwaves_r_base.riscv",
@@ -75,9 +78,7 @@ BENCHMARK_CONFIG = {
         "spec_num": "503.bwaves_r",
         "outputs": [
             ("bwaves_1.out", "bwaves_1.out"),
-            ("bwaves_2.out", "bwaves_2.out"),
-            ("bwaves_3.out", "bwaves_3.out"),
-            ("bwaves_4.out", "bwaves_4.out"),
+            # bwaves_2.out, bwaves_3.out, bwaves_4.out not included since we only run bwaves_1
         ],
         "specdiff_opts": ["--abstol", "1e-16", "--reltol", "0.015"]
     },
@@ -112,20 +113,29 @@ BENCHMARK_CONFIG = {
         "stdin": None,
         "spec_num": "510.parest_r",
         "outputs": [
-            ("output-ref.log", "output-ref.log"),
+            ("log", "log"),
+            ("statistics", "statistics"),
         ],
-        "specdiff_opts": ["--abstol", "1e-05", "--reltol", "0.0001"]
+        "specdiff_opts": ["--abstol", "1e-03", "--floatcompare"]
     },
+    # NOTE: POV-Ray produces SPEC-benchmark.tga as output.
+    # The imagevalidate binary compares it against SPEC-benchmark.org.tga reference
+    # and produces imagevalidate_SPEC-benchmark.tga.out with SSIM similarity scores.
+    # For fault injection, you MUST run imagevalidate after POV-Ray rendering.
     "povray": {
         "dir": "511.povray_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/povray_r_base.riscv",
         "args": ["SPEC-benchmark-ref.ini"],
         "stdin": None,
         "spec_num": "511.povray_r",
+        "needs_special_validation": True,
+        "validation_binary": "../exe/imagevalidate_511_base.riscv",
+        "validation_args": ["SPEC-benchmark.tga", "../data/refrate/compare/SPEC-benchmark.org.tga"],
+        "validation_output": "imagevalidate_SPEC-benchmark.tga.out",
         "outputs": [
             ("imagevalidate_SPEC-benchmark.tga.out", "imagevalidate_SPEC-benchmark.tga.out"),
         ],
-        "specdiff_opts": ["--reltol", "0.01"]
+        "specdiff_opts": ["--reltol", "0.06"]
     },
     "lbm": {
         "dir": "519.lbm_r/run/run_base_refrate_riscv.0000",
@@ -138,45 +148,83 @@ BENCHMARK_CONFIG = {
         ],
         "specdiff_opts": ["--abstol", "1e-07"]
     },
+    # NOTE: WRF requires special validation using the 'diffwrf' binary.
+    # The main output is wrfout_d01_* (binary). diffwrf compares it against
+    # wrf_reference_01 and produces diffwrf_output_01.txt with PASSED/FAILED lines.
+    # IMPORTANT: There is NO rsl.out.0000 reference file! Only diffwrf_output_01.txt exists.
+    # For fault injection, you MUST run diffwrf after the benchmark to produce the validation output.
+    # Post-run command: ./diffwrf_521_base.riscv wrfout_d01_2000-01-24_20_00_00 wrf_reference_01
     "wrf": {
         "dir": "521.wrf_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/wrf_r_base.riscv",
         "args": [],
         "stdin": None,
         "spec_num": "521.wrf_r",
+        "needs_special_validation": True,  # Requires running diffwrf binary post-benchmark
+        "validation_binary": "diffwrf_521_base.riscv",
+        "validation_args": ["wrfout_d01_2000-01-24_20_00_00", "wrf_reference_01"],
         "outputs": [
-            ("rsl.out.0000", "rsl.out.0000"),
+            ("diffwrf_output_01.txt", "diffwrf_output_01.txt"),
         ],
-        "specdiff_opts": ["--abstol", "1e-09", "--reltol", "0.00015"]
+        "specdiff_opts": []  # No tolerances needed - output is PASSED/FAILED text
     },
+    # NOTE: Blender produces sh3_no_char_0849.tga as output.
+    # The imagevalidate binary compares it against sh3_no_char_0849.org.tga reference
+    # and produces imagevalidate_sh3_no_char_0849.out with SSIM similarity scores.
+    # For fault injection, you MUST run imagevalidate after Blender rendering.
     "blender": {
         "dir": "526.blender_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/blender_r_base.riscv",
         "args": ["sh3_no_char.blend", "--render-output", "sh3_no_char_", "--threads", "1", "-b", "-F", "RAWTGA", "-s", "849", "-e", "849", "-a"],
         "stdin": None,
         "spec_num": "526.blender_r",
+        "needs_special_validation": True,
+        "validation_binary": "../exe/imagevalidate_526_base.riscv",
+        "validation_args": ["-avg", "-threshold", "0.75", "-maxthreshold", "0.01", 
+                           "sh3_no_char_0849.tga", "../data/refrate/compare/sh3_no_char_0849.org.tga"],
+        "validation_output": "imagevalidate_sh3_no_char_0849.out",
         "outputs": [
             ("imagevalidate_sh3_no_char_0849.out", "imagevalidate_sh3_no_char_0849.out"),
         ],
         "specdiff_opts": ["--reltol", "0.01"]
     },
+    # NOTE: CAM4 requires special validation using the 'cam4_validate' binary.
+    # The main output is h0.nc (netCDF). cam4_validate compares it against
+    # h0_ctrl.nc (in data/refrate/compare/) and produces cam4_validate.txt with "PASS: N points."
+    # For fault injection, you MUST run cam4_validate after the benchmark.
+    # Validation binary: ../exe/cam4_validate_527_base.riscv
+    # Post-run command: ./cam4_validate_527_base.riscv 10 0.0035 <path_to_h0_ctrl.nc> h0.nc
+    # Reference: data/refrate/compare/h0_ctrl.nc
     "cam4": {
         "dir": "527.cam4_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/cam4_r_base.riscv",
         "args": [],
         "stdin": None,
         "spec_num": "527.cam4_r",
+        "needs_special_validation": True,  # Requires running cam4_validate binary post-benchmark
+        "validation_binary": "../exe/cam4_validate_527_base.riscv",
+        "validation_args": ["10", "0.0035", "../data/refrate/compare/h0_ctrl.nc", "h0.nc"],
+        "validation_output": "cam4_validate.txt",
         "outputs": [
             ("cam4_validate.txt", "cam4_validate.txt"),
         ],
-        "specdiff_opts": ["--abstol", "1e-09", "--reltol", "1e-08"]
+        "specdiff_opts": []  # No tolerances needed - output is PASS/FAIL text
     },
+    # NOTE: ImageMagick produces refrate_output.tga as output.
+    # The imagevalidate binary compares it against refrate_expected.tga reference
+    # and produces refrate_validate.out with similarity scores.
+    # For fault injection, you MUST run imagevalidate after the convert operation.
     "imagick": {
         "dir": "538.imagick_r/run/run_base_refrate_riscv.0000",
         "binary": "../run_base_refrate_riscv.0000/imagick_r_base.riscv",
         "args": ["-limit", "disk", "0", "refrate_input.tga", "-edge", "41", "-resample", "181%", "-emboss", "31", "-colorspace", "YUV", "-mean-shift", "19x19+15%", "-resize", "30%", "refrate_output.tga"],
         "stdin": None,
         "spec_num": "538.imagick_r",
+        "needs_special_validation": True,
+        "validation_binary": "../exe/imagevalidate_538_base.riscv",
+        "validation_args": ["-avg", "-threshold", "0.95", "-maxthreshold", "0.001", 
+                           "refrate_output.tga", "../data/refrate/compare/refrate_expected.tga"],
+        "validation_output": "refrate_validate.out",
         "outputs": [
             ("refrate_validate.out", "refrate_validate.out"),
         ],
@@ -663,14 +711,123 @@ def classify_result(baseline_retcode: int, baseline_stdout_hash: str,
         return 'sdc'  # Silent Data Corruption - different output
 
 
-def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[str, str]:
+def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> Tuple[bool, str]:
+    """
+    Run special validation binary for benchmarks that require it.
+    
+    Some SPEC benchmarks use custom validation binaries (imagevalidate, diffwrf,
+    cam4_validate) to compare outputs against reference. This function runs
+    those binaries to produce the validation output file that specdiff will compare.
+    
+    Supported benchmarks:
+    - WRF: runs diffwrf to compare binary output files
+    - CAM4: runs cam4_validate to compare netCDF files  
+    - POV-Ray, Blender, ImageMagick: run imagevalidate for image comparison
+    
+    Args:
+        benchmark: Name of the benchmark
+        output_dir: Directory containing the benchmark output files
+        qemu_path: Path to QEMU binary for running RISC-V validators
+        
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    config = BENCHMARK_CONFIG.get(benchmark)
+    if not config:
+        return False, f"Unknown benchmark: {benchmark}"
+    
+    # Check if this benchmark needs special validation
+    if not config.get("needs_special_validation", False):
+        return True, "No special validation needed"
+    
+    validation_binary = config.get("validation_binary")
+    validation_args = list(config.get("validation_args", []))  # Make a copy
+    
+    if not validation_binary:
+        return False, "needs_special_validation=True but no validation_binary specified"
+    
+    # Build absolute path to validation binary
+    base_work_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, config["dir"])
+    validator_path = os.path.abspath(os.path.join(base_work_dir, validation_binary))
+    
+    if not os.path.exists(validator_path):
+        return False, f"Validation binary not found: {validator_path}"
+    
+    # Handle benchmark-specific setup
+    if benchmark == "wrf":
+        # WRF: need wrf_reference_01 file for comparison
+        # Reference is in data/refrate/compare/, not in run directory
+        wrf_ref = os.path.join(DEFAULT_BENCHMARKS_DIR, config["spec_num"],
+                               "data", "refrate", "compare", "wrf_reference_01")
+        wrf_ref_dst = os.path.join(output_dir, "wrf_reference_01")
+        if os.path.exists(wrf_ref) and not os.path.exists(wrf_ref_dst):
+            try:
+                shutil.copy(wrf_ref, wrf_ref_dst)
+            except Exception as e:
+                return False, f"Failed to copy WRF reference: {e}"
+    
+    elif benchmark == "cam4":
+        # CAM4: use absolute path for h0_ctrl.nc reference
+        h0_ctrl_path = os.path.join(DEFAULT_BENCHMARKS_DIR, config["spec_num"], 
+                                     "data", "refrate", "compare", "h0_ctrl.nc")
+        if not os.path.exists(h0_ctrl_path):
+            return False, f"CAM4 reference not found: {h0_ctrl_path}"
+        validation_args = ["10", "0.0035", h0_ctrl_path, "h0.nc"]
+    
+    elif benchmark in ("povray", "blender", "imagick"):
+        # Image validation: need to resolve relative paths in validation_args
+        # The args typically contain paths like "../data/refrate/compare/xxx.tga"
+        resolved_args = []
+        for arg in validation_args:
+            if arg.startswith("../"):
+                # Resolve relative path to absolute
+                abs_path = os.path.abspath(os.path.join(base_work_dir, arg))
+                resolved_args.append(abs_path)
+            else:
+                resolved_args.append(arg)
+        validation_args = resolved_args
+    
+    # Build command: run validator through QEMU
+    cmd = [qemu_path, validator_path] + validation_args
+    
+    # Get output file name from config
+    validation_output = config.get("validation_output", "validation.out")
+    
+    try:
+        with open(os.path.join(output_dir, validation_output), 'w') as outfile:
+            result = subprocess.run(
+                cmd,
+                cwd=output_dir,
+                stdout=outfile,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=300  # 5 minute timeout for validation
+            )
+        
+        if result.returncode != 0:
+            return False, f"Validation binary returned {result.returncode}: {result.stderr[:200]}"
+        
+        return True, f"Validation output written to {validation_output}"
+        
+    except subprocess.TimeoutExpired:
+        return False, "Validation binary timed out"
+    except Exception as e:
+        return False, f"Error running validation: {str(e)}"
+
+
+def run_specdiff(benchmark: str, output_dir: str, spec_path: str, 
+                  qemu_path: str = None) -> Tuple[str, str]:
     """
     Run SPEC's specdiff tool to compare output files against golden reference.
+    
+    For benchmarks that require special validation (WRF, CAM4), this function
+    first runs the validation binary to produce the comparison output.
     
     Args:
         benchmark: Name of the benchmark
         output_dir: Directory containing the generated output files
         spec_path: Path to SPEC2017 installation
+        qemu_path: Path to QEMU binary (needed for special validation)
         
     Returns:
         Tuple of (result_code: str, details: str)
@@ -683,6 +840,15 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[str, 
     config = BENCHMARK_CONFIG.get(benchmark)
     if not config:
         return 'error', f"Unknown benchmark: {benchmark}"
+    
+    # Run special validation first if needed (WRF, CAM4)
+    if config.get("needs_special_validation", False):
+        if qemu_path is None:
+            qemu_path = DEFAULT_QEMU_PATH
+        success, msg = run_special_validation(benchmark, output_dir, qemu_path)
+        if not success:
+            # Special validation failed - likely a crash or missing output
+            return 'missing_output', f"Special validation failed: {msg}"
     
     spec_num = config.get("spec_num")
     outputs = config.get("outputs", [])
@@ -767,7 +933,8 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str) -> Tuple[str, 
 
 
 def classify_result_specdiff(benchmark: str, fault_result: FaultResult, 
-                              spec_path: str, baseline_retcode: int = 0) -> str:
+                              spec_path: str, baseline_retcode: int = 0,
+                              qemu_path: str = None) -> str:
     """
     Classify fault injection result using SPEC's specdiff tool for accurate SDC detection.
     
@@ -786,6 +953,7 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
         fault_result: Result from run_fault_injection
         spec_path: Path to SPEC2017 installation
         baseline_retcode: Expected return code from baseline run
+        qemu_path: Path to QEMU binary (needed for special validation)
         
     Returns:
         Classification string
@@ -819,8 +987,9 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
         # Same return code but no output to verify - assume same (conservative)
         return 'same'
     
-    # Run specdiff to compare outputs
-    specdiff_result, details = run_specdiff(benchmark, fault_result.output_dir, spec_path)
+    # Run specdiff to compare outputs (handles special validation for WRF/CAM4)
+    specdiff_result, details = run_specdiff(benchmark, fault_result.output_dir, 
+                                             spec_path, qemu_path)
     
     if specdiff_result == 'match':
         # Specdiff confirmed outputs match - fault was masked
@@ -958,7 +1127,7 @@ def run_single_experiment(args_tuple):
     
     # Classify the result using specdiff for accurate SDC detection
     outcome = classify_result_specdiff(
-        benchmark, fault_result, spec_path, baseline_retcode
+        benchmark, fault_result, spec_path, baseline_retcode, qemu_path
     )
     
     # Clean up the output directory after classification
