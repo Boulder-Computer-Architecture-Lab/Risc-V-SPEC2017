@@ -528,20 +528,36 @@ class BenchmarkRunner:
                     shutil.copy(stdin_src, stdin_dst)
                     stdin_file = open(stdin_dst, 'r')
             
-            # Copy other required input files (heuristic: copy small files from work_dir)
+            # Copy other required input files and directories from work_dir
             # This is needed for benchmarks that read input files from cwd
+            # e.g., nab needs the "1am0/" directory with .pdb and .prm files
             for fname in os.listdir(base_work_dir):
                 src = os.path.join(base_work_dir, fname)
-                if os.path.isfile(src):
-                    size = os.path.getsize(src)
-                    # Copy files < 100MB that look like inputs
-                    if size < 100 * 1024 * 1024:
-                        dst = os.path.join(temp_dir, fname)
-                        if not os.path.exists(dst):
-                            try:
-                                shutil.copy(src, dst)
-                            except:
-                                pass  # Ignore copy errors for non-essential files
+                dst = os.path.join(temp_dir, fname)
+                
+                if os.path.exists(dst):
+                    continue  # Already copied
+                    
+                try:
+                    if os.path.isfile(src):
+                        size = os.path.getsize(src)
+                        # Copy files < 100MB that look like inputs
+                        if size < 100 * 1024 * 1024:
+                            shutil.copy(src, dst)
+                    elif os.path.isdir(src):
+                        # Copy directories (needed for nab's 1am0/ directory, etc.)
+                        # Skip large directories and build/exe directories
+                        if fname not in ('build', 'exe', 'Docs', 'Spec', 'src', '__pycache__'):
+                            dir_size = sum(
+                                os.path.getsize(os.path.join(dirpath, f))
+                                for dirpath, _, filenames in os.walk(src)
+                                for f in filenames
+                            )
+                            # Copy directories < 50MB
+                            if dir_size < 50 * 1024 * 1024:
+                                shutil.copytree(src, dst)
+                except Exception:
+                    pass  # Ignore copy errors for non-essential files
             
             # Use Popen for better control over process termination
             proc = subprocess.Popen(
