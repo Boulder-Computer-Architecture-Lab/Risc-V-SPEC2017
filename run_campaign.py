@@ -76,9 +76,9 @@ BENCHMARK_CONFIG = {
         "args": ["bwaves_1"],
         "stdin": "bwaves_1.in",
         "spec_num": "503.bwaves_r",
+        "stdout_file": "bwaves_1.out",  # SPEC redirects stdout to this file
         "outputs": [
             ("bwaves_1.out", "bwaves_1.out"),
-            # bwaves_2.out, bwaves_3.out, bwaves_4.out not included since we only run bwaves_1
         ],
         "specdiff_opts": ["--abstol", "1e-16", "--reltol", "0.015"]
     },
@@ -88,6 +88,7 @@ BENCHMARK_CONFIG = {
         "args": ["spec_ref.par"],
         "stdin": None,
         "spec_num": "507.cactuBSSN_r",
+        "stdout_file": "spec_ref.out",  # SPEC redirects stdout to this file
         "outputs": [
             ("gxx.xl", "gxx.xl"),
             ("gxy.xl", "gxy.xl"),
@@ -143,6 +144,7 @@ BENCHMARK_CONFIG = {
         "args": ["3000", "reference.dat", "0", "0", "100_100_130_ldc.of"],
         "stdin": None,
         "spec_num": "519.lbm_r",
+        "stdout_file": "lbm.out",  # SPEC redirects stdout to this file
         "outputs": [
             ("lbm.out", "lbm.out"),
         ],
@@ -166,7 +168,7 @@ BENCHMARK_CONFIG = {
         "outputs": [
             ("diffwrf_output_01.txt", "diffwrf_output_01.txt"),
         ],
-        "specdiff_opts": []  # No tolerances needed - output is PASSED/FAILED text
+        "specdiff_opts": ["--cw"]  # Collapse whitespace per compare.cmd
     },
     # NOTE: Blender produces sh3_no_char_0849.tga as output.
     # The imagevalidate binary compares it against sh3_no_char_0849.org.tga reference
@@ -186,7 +188,7 @@ BENCHMARK_CONFIG = {
         "outputs": [
             ("imagevalidate_sh3_no_char_0849.out", "imagevalidate_sh3_no_char_0849.out"),
         ],
-        "specdiff_opts": ["--reltol", "0.01"]
+        "specdiff_opts": ["--reltol", "0.05"]  # per compare.cmd
     },
     # NOTE: CAM4 requires special validation using the 'cam4_validate' binary.
     # The main output is h0.nc (netCDF). cam4_validate compares it against
@@ -208,7 +210,7 @@ BENCHMARK_CONFIG = {
         "outputs": [
             ("cam4_validate.txt", "cam4_validate.txt"),
         ],
-        "specdiff_opts": []  # No tolerances needed - output is PASS/FAIL text
+        "specdiff_opts": ["--cw"]  # Collapse whitespace per compare.cmd
     },
     # NOTE: ImageMagick produces refrate_output.tga as output.
     # The imagevalidate binary compares it against refrate_expected.tga reference
@@ -236,6 +238,7 @@ BENCHMARK_CONFIG = {
         "args": ["1am0", "1122214447", "122"],
         "stdin": None,
         "spec_num": "544.nab_r",
+        "stdout_file": "1am0.out",  # SPEC redirects stdout to this file
         "outputs": [
             ("1am0.out", "1am0.out"),
         ],
@@ -258,6 +261,7 @@ BENCHMARK_CONFIG = {
         "args": [],
         "stdin": "ocean_benchmark2.in.x",
         "spec_num": "554.roms_r",
+        "stdout_file": "ocean_benchmark2.log",  # SPEC redirects stdout to this file
         "outputs": [
             ("ocean_benchmark2.log", "ocean_benchmark2.log"),
         ],
@@ -575,6 +579,20 @@ class BenchmarkRunner:
                 result.return_code = proc.returncode
                 result.stdout_hash = hashlib.md5(stdout.encode()).hexdigest()
                 result.stderr_hash = hashlib.md5(stderr.encode()).hexdigest()
+                
+                # CRITICAL: Write stdout to file if the benchmark expects it.
+                # Many SPEC benchmarks (bwaves, lbm, nab, roms, cactuBSSN) create
+                # their validated output files via stdout redirection (> file.out).
+                # Since we capture stdout via PIPE, we must write it to the file
+                # that specdiff will later look for.
+                stdout_file = config.get("stdout_file")
+                if stdout_file and stdout:
+                    stdout_path = os.path.join(temp_dir, stdout_file)
+                    try:
+                        with open(stdout_path, 'w') as sf:
+                            sf.write(stdout)
+                    except Exception:
+                        pass  # Non-fatal: specdiff will report missing_output
                 
                 # Detect if the program terminated due to a crash signal
                 # In Python, subprocess returns negative signal number for signal termination
@@ -987,6 +1005,7 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
     
     # Check for crash signals (SIGSEGV, SIGILL, SIGBUS, SIGFPE, SIGABRT, etc.)
     # In Python, subprocess returns negative signal number for signal termination
+    # These are REAL crashes - the program was killed by a signal.
     if fault_result.is_signal_crash:
         return 'crash'
     
@@ -994,13 +1013,15 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
     if fault_result.return_code < 0:
         return 'crash'
     
-    # Check if output directory exists for specdiff comparison
+    # For non-signal exits, ALWAYS try specdiff first if we have output files.
+    # A non-zero return code alone does NOT mean crash - the fault may have caused
+    # an error exit but still produced partial/complete output that we can compare.
+    # Only specdiff can tell us if the output is correct (same), corrupted (sdc),
+    # or missing (crash).
     if not fault_result.output_dir or not os.path.exists(fault_result.output_dir):
-        # No output dir - check return code
+        # No output dir at all
         if fault_result.return_code != baseline_retcode:
-            # Non-zero/unexpected return code = crash
             return 'crash'
-        # Same return code but no output to verify - assume same (conservative)
         return 'same'
     
     # Run specdiff to compare outputs (handles special validation for WRF/CAM4)
@@ -1012,17 +1033,10 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
         return 'same'
     elif specdiff_result == 'differ':
         # Specdiff found actual content differences - TRUE SDC
-        # This is the ONLY case where we report SDC
         return 'sdc'
     elif specdiff_result == 'missing_output':
-        # Output files missing - program likely crashed before writing them
-        # Check return code to confirm
-        if fault_result.return_code != baseline_retcode:
-            return 'crash'
-        else:
-            # Weird case: same return code but missing outputs
-            # This could be a crash that returned 0, treat as crash
-            return 'crash'
+        # Output files missing - program crashed before writing them
+        return 'crash'
     else:  # 'error'
         # Error running specdiff - fall back to return code check
         if fault_result.return_code != baseline_retcode:
