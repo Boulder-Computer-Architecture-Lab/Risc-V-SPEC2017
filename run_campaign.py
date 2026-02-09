@@ -131,8 +131,8 @@ BENCHMARK_CONFIG = {
         "stdin": None,
         "spec_num": "511.povray_r",
         "needs_special_validation": True,
-        "validation_binary": "../exe/imagevalidate_511_base.riscv",
-        "validation_args": ["SPEC-benchmark.tga", "../data/refrate/compare/SPEC-benchmark.org.tga"],
+        "validation_binary": "../../exe/imagevalidate_511_base.riscv",
+        "validation_args": ["SPEC-benchmark.tga", "../../data/refrate/compare/SPEC-benchmark.org.tga"],
         "validation_output": "imagevalidate_SPEC-benchmark.tga.out",
         "outputs": [
             ("imagevalidate_SPEC-benchmark.tga.out", "imagevalidate_SPEC-benchmark.tga.out"),
@@ -182,9 +182,9 @@ BENCHMARK_CONFIG = {
         "stdin": None,
         "spec_num": "526.blender_r",
         "needs_special_validation": True,
-        "validation_binary": "../exe/imagevalidate_526_base.riscv",
+        "validation_binary": "../../exe/imagevalidate_526_base.riscv",
         "validation_args": ["-avg", "-threshold", "0.75", "-maxthreshold", "0.01", 
-                           "sh3_no_char_0849.tga", "../data/refrate/compare/sh3_no_char_0849.org.tga"],
+                           "sh3_no_char_0849.tga", "../../data/refrate/compare/sh3_no_char_0849.org.tga"],
         "validation_output": "imagevalidate_sh3_no_char_0849.out",
         "outputs": [
             ("imagevalidate_sh3_no_char_0849.out", "imagevalidate_sh3_no_char_0849.out"),
@@ -205,8 +205,8 @@ BENCHMARK_CONFIG = {
         "stdin": None,
         "spec_num": "527.cam4_r",
         "needs_special_validation": True,  # Requires running cam4_validate binary post-benchmark
-        "validation_binary": "../exe/cam4_validate_527_base.riscv",
-        "validation_args": ["10", "0.0035", "../data/refrate/compare/h0_ctrl.nc", "h0.nc"],
+        "validation_binary": "../../exe/cam4_validate_527_base.riscv",
+        "validation_args": ["10", "0.0035", "../../data/refrate/compare/h0_ctrl.nc", "h0.nc"],
         "validation_output": "cam4_validate.txt",
         "outputs": [
             ("cam4_validate.txt", "cam4_validate.txt"),
@@ -224,9 +224,9 @@ BENCHMARK_CONFIG = {
         "stdin": None,
         "spec_num": "538.imagick_r",
         "needs_special_validation": True,
-        "validation_binary": "../exe/imagevalidate_538_base.riscv",
+        "validation_binary": "../../exe/imagevalidate_538_base.riscv",
         "validation_args": ["-avg", "-threshold", "0.95", "-maxthreshold", "0.001", 
-                           "refrate_output.tga", "../data/refrate/compare/refrate_expected.tga"],
+                           "refrate_output.tga", "../../data/refrate/compare/refrate_expected.tga"],
         "validation_output": "refrate_validate.out",
         "outputs": [
             ("refrate_validate.out", "refrate_validate.out"),
@@ -271,6 +271,229 @@ BENCHMARK_CONFIG = {
         "specdiff_opts": ["--abstol", "1e-07", "--reltol", "1e-07"]
     },
 }
+
+
+# Test workload overrides: only the fields that differ from refrate.
+# These use the same compiled binaries but with smaller/faster inputs.
+# The working directory will be set up by copying test input files.
+BENCHMARK_CONFIG_TEST = {
+    "bwaves": {
+        "dir": "503.bwaves_r/run/run_base_test_riscv.0000",
+        "args": ["bwaves_1"],
+        "stdin": "bwaves_1.in",
+        "stdout_file": "bwaves_1.out",
+        "outputs": [("bwaves_1.out", "bwaves_1.out")],
+        "specdiff_opts": ["--abstol", "1e-16", "--reltol", "0.015"],
+        "test_inputs": "503.bwaves_r/data/test/input",
+    },
+    "cactuBSSN": {
+        "dir": "507.cactuBSSN_r/run/run_base_test_riscv.0000",
+        "args": ["spec_test.par"],
+        "stdout_file": "spec_test.out",
+        "outputs": [
+            ("gxx.xl", "gxx.xl"),
+            ("gxy.xl", "gxy.xl"),
+            ("spec_test.out", "spec_test.out"),
+        ],
+        "specdiff_opts": ["--abstol", "5e-13", "--floatcompare"],
+        "test_inputs": "507.cactuBSSN_r/data/test/input",
+    },
+    "namd": {
+        "dir": "508.namd_r/run/run_base_test_riscv.0000",
+        "args": ["--input", "apoa1.input", "--output", "apoa1.test.output", "--iterations", "1"],
+        "outputs": [("apoa1.test.output", "apoa1.test.output")],
+        "specdiff_opts": ["--abstol", "5e-05"],
+        "test_inputs": "508.namd_r/data/test/input",
+        "extra_inputs": ["508.namd_r/data/all/input"],
+    },
+    "parest": {
+        "dir": "510.parest_r/run/run_base_test_riscv.0000",
+        "args": ["test.prm"],
+        "outputs": [("log", "log"), ("statistics", "statistics")],
+        "specdiff_opts": ["--abstol", "1e-03", "--floatcompare"],
+        "test_inputs": "510.parest_r/data/test/input",
+    },
+    "povray": {
+        "dir": "511.povray_r/run/run_base_test_riscv.0000",
+        "args": ["SPEC-benchmark-test.ini"],
+        "needs_special_validation": True,
+        "validation_binary": "../../exe/imagevalidate_511_base.riscv",
+        "validation_args": ["SPEC-benchmark.tga", "../../data/test/compare/SPEC-benchmark.org.tga"],
+        "validation_output": "imagevalidate_SPEC-benchmark.tga.out",
+        "outputs": [("imagevalidate_SPEC-benchmark.tga.out", "imagevalidate_SPEC-benchmark.tga.out")],
+        "specdiff_opts": ["--reltol", "0.06"],
+        "test_inputs": "511.povray_r/data/test/input",
+        "extra_inputs": ["511.povray_r/data/all/input"],
+    },
+    "lbm": {
+        "dir": "519.lbm_r/run/run_base_test_riscv.0000",
+        "args": ["20", "reference.dat", "0", "1", "100_100_130_cf_a.of"],
+        "stdout_file": "lbm.out",
+        "outputs": [("lbm.out", "lbm.out")],
+        "specdiff_opts": ["--abstol", "1e-07"],
+        "test_inputs": "519.lbm_r/data/test/input",
+    },
+    "wrf": {
+        "dir": "521.wrf_r/run/run_base_test_riscv.0000",
+        "args": [],
+        "needs_special_validation": True,
+        "validation_binary": "diffwrf_521_base.riscv",
+        "validation_args": ["wrfout_d01_2000-01-24_12_10_00", "wrf_reference_01"],
+        "validation_output": "diffwrf_output_01.txt",
+        "outputs": [("diffwrf_output_01.txt", "diffwrf_output_01.txt")],
+        "specdiff_opts": ["--cw"],
+        "test_inputs": "521.wrf_r/data/test/input",
+        "extra_inputs": ["521.wrf_r/data/all/input"],
+    },
+    "blender": {
+        "dir": "526.blender_r/run/run_base_test_riscv.0000",
+        "args": ["cube.blend", "--render-output", "cube_", "--threads", "1", "-b", "-F", "RAWTGA", "-s", "1", "-e", "1", "-a"],
+        "needs_special_validation": True,
+        "validation_binary": "../../exe/imagevalidate_526_base.riscv",
+        "validation_args": ["-avg", "-threshold", "0.75", "-maxthreshold", "0.01",
+                           "cube_0001.tga", "../../data/test/compare/cube_0001.org.tga"],
+        "validation_output": "imagevalidate_cube_0001.out",
+        "outputs": [("imagevalidate_cube_0001.out", "imagevalidate_cube_0001.out")],
+        "specdiff_opts": ["--reltol", "0.05"],
+        "test_inputs": "526.blender_r/data/test/input",
+    },
+    "cam4": {
+        "dir": "527.cam4_r/run/run_base_test_riscv.0000",
+        "args": [],
+        "needs_special_validation": True,
+        "validation_binary": "../../exe/cam4_validate_527_base.riscv",
+        "validation_args": ["10", "0.0035", "../../data/test/compare/h0_ctrl.nc", "h0.nc"],
+        "validation_output": "cam4_validate.txt",
+        "outputs": [("cam4_validate.txt", "cam4_validate.txt")],
+        "specdiff_opts": ["--cw"],
+        "test_inputs": "527.cam4_r/data/test/input",
+        "extra_inputs": ["527.cam4_r/data/all/input"],
+    },
+    "imagick": {
+        "dir": "538.imagick_r/run/run_base_test_riscv.0000",
+        "args": ["-limit", "disk", "0", "test_input.tga", "-shear", "25", "-resize", "640x480",
+                 "-negate", "-alpha", "Off", "test_output.tga"],
+        "needs_special_validation": True,
+        "validation_binary": "../../exe/imagevalidate_538_base.riscv",
+        "validation_args": ["-avg", "-threshold", "0.95", "-maxthreshold", "0.001",
+                           "test_output.tga", "../../data/test/compare/test_expected.tga"],
+        "validation_output": "test_validate.out",
+        "outputs": [("test_validate.out", "test_validate.out")],
+        "specdiff_opts": ["--reltol", "0.01"],
+        "test_inputs": "538.imagick_r/data/test/input",
+    },
+    "nab": {
+        "dir": "544.nab_r/run/run_base_test_riscv.0000",
+        "args": ["hkrdenq", "1930344093", "1000"],
+        "stdout_file": "hkrdenq.out",
+        "outputs": [("hkrdenq.out", "hkrdenq.out")],
+        "specdiff_opts": ["--reltol", "0.01", "--skipreltol", "2"],
+        "test_inputs": "544.nab_r/data/test/input",
+    },
+    "fotonik3d": {
+        "dir": "549.fotonik3d_r/run/run_base_test_riscv.0000",
+        "args": [],
+        "compressed_inputs": [("OBJ.dat.xz", "OBJ.dat")],
+        "outputs": [("pscyee.out", "pscyee.out")],
+        "specdiff_opts": ["--abstol", "1e-27", "--reltol", "1e-10", "--obiwan", "--floatcompare"],
+        "test_inputs": "549.fotonik3d_r/data/test/input",
+    },
+    "roms": {
+        "dir": "554.roms_r/run/run_base_test_riscv.0000",
+        "args": [],
+        "stdin": "ocean_benchmark0.in.x",
+        "stdout_file": "ocean_benchmark0.log",
+        "outputs": [("ocean_benchmark0.log", "ocean_benchmark0.log")],
+        "specdiff_opts": ["--abstol", "1e-07", "--reltol", "1e-07"],
+        "test_inputs": "554.roms_r/data/test/input",
+        "extra_inputs": ["554.roms_r/data/all/input"],
+    },
+}
+
+# Active workload - set by CLI flag, used by all functions
+ACTIVE_WORKLOAD = "refrate"
+
+
+def get_effective_config(benchmark: str) -> dict:
+    """Get the effective benchmark config, merging test overrides if active."""
+    if benchmark not in BENCHMARK_CONFIG:
+        raise ValueError(f"Unknown benchmark: {benchmark}. Available: {list(BENCHMARK_CONFIG.keys())}")
+    config = dict(BENCHMARK_CONFIG[benchmark])  # shallow copy
+    if ACTIVE_WORKLOAD == "test" and benchmark in BENCHMARK_CONFIG_TEST:
+        config.update(BENCHMARK_CONFIG_TEST[benchmark])
+    return config
+
+
+def setup_test_run_dir(benchmark: str, benchmarks_dir: str) -> str:
+    """
+    Set up a test run directory by copying test input files into the
+    existing refrate run directory structure.
+    
+    Creates: <spec_num>/run/run_base_test_riscv.0000/ with test input files
+    
+    Returns the relative dir path (like the 'dir' field in config).
+    """
+    config = BENCHMARK_CONFIG[benchmark]
+    test_overrides = BENCHMARK_CONFIG_TEST.get(benchmark, {})
+    spec_num = config["spec_num"]
+    
+    # Create test run directory alongside the refrate one
+    test_run_dir = os.path.join(benchmarks_dir, spec_num, "run", "run_base_test_riscv.0000")
+    
+    if os.path.exists(test_run_dir):
+        # Already set up
+        return f"{spec_num}/run/run_base_test_riscv.0000"
+    
+    os.makedirs(test_run_dir, exist_ok=True)
+    
+    # Copy test input files
+    test_inputs_rel = test_overrides.get("test_inputs", "")
+    if test_inputs_rel:
+        test_inputs_dir = os.path.join(benchmarks_dir, test_inputs_rel)
+        if os.path.exists(test_inputs_dir):
+            for item in os.listdir(test_inputs_dir):
+                src = os.path.join(test_inputs_dir, item)
+                dst = os.path.join(test_run_dir, item)
+                if os.path.isdir(src):
+                    if not os.path.exists(dst):
+                        shutil.copytree(src, dst)
+                else:
+                    shutil.copy2(src, dst)
+    
+    # Copy extra shared input files (data/all/input/)
+    for extra_rel in test_overrides.get("extra_inputs", []):
+        extra_dir = os.path.join(benchmarks_dir, extra_rel)
+        if os.path.exists(extra_dir):
+            for item in os.listdir(extra_dir):
+                src = os.path.join(extra_dir, item)
+                dst = os.path.join(test_run_dir, item)
+                if not os.path.exists(dst):
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst)
+                    else:
+                        shutil.copy2(src, dst)
+    
+    # For WRF: also copy the compare reference file needed by diffwrf
+    if benchmark == "wrf":
+        wrf_compare = os.path.join(benchmarks_dir, spec_num, "data", "test", "compare")
+        if os.path.exists(wrf_compare):
+            for item in os.listdir(wrf_compare):
+                src = os.path.join(wrf_compare, item)
+                dst = os.path.join(test_run_dir, item)
+                if not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+    
+    # Copy the validation binary into test run dir if it's a local path (like diffwrf for WRF)
+    refrate_dir = os.path.join(benchmarks_dir, config["dir"])
+    val_binary = config.get("validation_binary", "")
+    if val_binary and not val_binary.startswith("../"):
+        src = os.path.join(refrate_dir, val_binary)
+        dst = os.path.join(test_run_dir, val_binary)
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+    
+    print(f"  Set up test run directory: {test_run_dir}")
+    return f"{spec_num}/run/run_base_test_riscv.0000"
 
 
 @dataclass
@@ -326,10 +549,8 @@ class BenchmarkRunner:
         self.fault_plugin = os.path.join(plugins_dir, "fault_injector.so")
         
     def get_benchmark_config(self, benchmark: str) -> dict:
-        """Get configuration for a benchmark."""
-        if benchmark not in BENCHMARK_CONFIG:
-            raise ValueError(f"Unknown benchmark: {benchmark}. Available: {list(BENCHMARK_CONFIG.keys())}")
-        return BENCHMARK_CONFIG[benchmark]
+        """Get configuration for a benchmark, with workload overrides applied."""
+        return get_effective_config(benchmark)
     
     def get_work_dir(self, benchmark: str) -> str:
         """Get the working directory for a benchmark."""
@@ -796,9 +1017,7 @@ def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> T
     Returns:
         Tuple of (success: bool, message: str)
     """
-    config = BENCHMARK_CONFIG.get(benchmark)
-    if not config:
-        return False, f"Unknown benchmark: {benchmark}"
+    config = get_effective_config(benchmark)
     
     # Check if this benchmark needs special validation
     if not config.get("needs_special_validation", False):
@@ -811,18 +1030,20 @@ def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> T
         return False, "needs_special_validation=True but no validation_binary specified"
     
     # Build absolute path to validation binary
-    base_work_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, config["dir"])
-    validator_path = os.path.abspath(os.path.join(base_work_dir, validation_binary))
+    # Use refrate dir for binary location (binaries are always from refrate build)
+    refrate_work_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, BENCHMARK_CONFIG[benchmark]["dir"])
+    validator_path = os.path.abspath(os.path.join(refrate_work_dir, validation_binary))
     
     if not os.path.exists(validator_path):
         return False, f"Validation binary not found: {validator_path}"
     
+    compare_subdir = "test" if ACTIVE_WORKLOAD == "test" else "refrate"
+    
     # Handle benchmark-specific setup
     if benchmark == "wrf":
         # WRF: need wrf_reference_01 file for comparison
-        # Reference is in data/refrate/compare/, not in run directory
         wrf_ref = os.path.join(DEFAULT_BENCHMARKS_DIR, config["spec_num"],
-                               "data", "refrate", "compare", "wrf_reference_01")
+                               "data", compare_subdir, "compare", "wrf_reference_01")
         wrf_ref_dst = os.path.join(output_dir, "wrf_reference_01")
         if os.path.exists(wrf_ref) and not os.path.exists(wrf_ref_dst):
             try:
@@ -833,19 +1054,20 @@ def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> T
     elif benchmark == "cam4":
         # CAM4: use absolute path for h0_ctrl.nc reference
         h0_ctrl_path = os.path.join(DEFAULT_BENCHMARKS_DIR, config["spec_num"], 
-                                     "data", "refrate", "compare", "h0_ctrl.nc")
+                                     "data", compare_subdir, "compare", "h0_ctrl.nc")
         if not os.path.exists(h0_ctrl_path):
             return False, f"CAM4 reference not found: {h0_ctrl_path}"
         validation_args = ["10", "0.0035", h0_ctrl_path, "h0.nc"]
     
     elif benchmark in ("povray", "blender", "imagick"):
         # Image validation: need to resolve relative paths in validation_args
-        # The args typically contain paths like "../data/refrate/compare/xxx.tga"
+        # The args contain paths like "../data/refrate/compare/xxx.tga" or "../data/test/compare/xxx.tga"
+        # These are relative to the refrate run dir (where binaries live)
         resolved_args = []
         for arg in validation_args:
             if arg.startswith("../"):
-                # Resolve relative path to absolute
-                abs_path = os.path.abspath(os.path.join(base_work_dir, arg))
+                # Resolve relative path to absolute (relative to refrate work dir)
+                abs_path = os.path.abspath(os.path.join(refrate_work_dir, arg))
                 resolved_args.append(abs_path)
             else:
                 resolved_args.append(arg)
@@ -856,6 +1078,29 @@ def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> T
     
     # Get output file name from config
     validation_output = config.get("validation_output", "validation.out")
+    
+    # Before running the validator, check if the primary output file exists.
+    # For image benchmarks: the .tga file. For WRF: wrfout_d01_*. For CAM4: h0.nc.
+    # If the primary output doesn't exist, the benchmark crashed before producing it.
+    primary_outputs = {
+        "povray": "SPEC-benchmark.tga",
+        "blender": None,  # varies by test/ref, check validation_args
+        "imagick": None,  # varies by test/ref, check validation_args
+        "wrf": None,  # checked via validation_args
+        "cam4": "h0.nc",
+    }
+    primary_file = primary_outputs.get(benchmark)
+    if primary_file is None:
+        # Try to get primary output from first non-flag validation arg
+        for arg in validation_args:
+            if not arg.startswith("-") and not arg.startswith("/") and not arg.replace(".", "").replace("e", "").replace("-", "").isdigit():
+                primary_file = arg
+                break
+    
+    if primary_file and not os.path.isabs(primary_file):
+        primary_path = os.path.join(output_dir, primary_file)
+        if not os.path.exists(primary_path):
+            return False, f"Primary output missing: {primary_file} (benchmark likely crashed)"
     
     try:
         with open(os.path.join(output_dir, validation_output), 'w') as outfile:
@@ -868,8 +1113,12 @@ def run_special_validation(benchmark: str, output_dir: str, qemu_path: str) -> T
                 timeout=300  # 5 minute timeout for validation
             )
         
+        # Validation binary ran. Even if it returned non-zero, the validation
+        # output file was written and specdiff can compare it against reference.
+        # A non-zero return code from the validator does NOT mean "crash" — it
+        # may mean the images differ (which is SDC). Let specdiff decide.
         if result.returncode != 0:
-            return False, f"Validation binary returned {result.returncode}: {result.stderr[:200]}"
+            return True, f"Validation completed with rc={result.returncode} (output written for specdiff)"
         
         return True, f"Validation output written to {validation_output}"
         
@@ -901,18 +1150,23 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str,
           - 'missing_output': Output files were not generated (likely crash)
           - 'error': Could not run specdiff (tools missing, etc.)
     """
-    config = BENCHMARK_CONFIG.get(benchmark)
-    if not config:
-        return 'error', f"Unknown benchmark: {benchmark}"
+    config = get_effective_config(benchmark)
     
-    # Run special validation first if needed (WRF, CAM4)
+    # Run special validation first if needed (WRF, CAM4, image benchmarks)
     if config.get("needs_special_validation", False):
         if qemu_path is None:
             qemu_path = DEFAULT_QEMU_PATH
         success, msg = run_special_validation(benchmark, output_dir, qemu_path)
         if not success:
-            # Special validation failed - likely a crash or missing output
-            return 'missing_output', f"Special validation failed: {msg}"
+            # Special validation failed.
+            # If the primary output file is missing, the benchmark crashed.
+            # Otherwise, there's an infrastructure error.
+            if "Primary output missing" in msg:
+                return 'missing_output', f"Special validation failed: {msg}"
+            else:
+                # Validation binary itself failed to run (not found, timeout, etc.)
+                # This is an infrastructure error, not a benchmark crash or SDC.
+                return 'error', f"Special validation failed: {msg}"
     
     spec_num = config.get("spec_num")
     outputs = config.get("outputs", [])
@@ -924,7 +1178,8 @@ def run_specdiff(benchmark: str, output_dir: str, spec_path: str,
     
     specperl = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "specperl")
     specdiff = os.path.join(DEFAULT_BENCHMARKS_DIR, "bin", "harness", "specdiff")
-    ref_output_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, spec_num, "data", "refrate", "output")
+    workload_name = "test" if ACTIVE_WORKLOAD == "test" else "refrate"
+    ref_output_dir = os.path.join(DEFAULT_BENCHMARKS_DIR, spec_num, "data", workload_name, "output")
     
     if not os.path.exists(specperl):
         return 'error', f"specperl not found at {specperl}"
@@ -1065,10 +1320,15 @@ def classify_result_specdiff(benchmark: str, fault_result: FaultResult,
         # Specdiff found actual content differences - TRUE SDC
         return 'sdc'
     elif specdiff_result == 'missing_output':
-        # Output files missing - program crashed before writing them
+        # Output files missing - program likely crashed before writing them.
+        # But check: if return code was 0 (same as baseline), the benchmark
+        # THOUGHT it completed normally but output is missing/incomplete.
+        # This is still a crash from our perspective (the fault caused the
+        # program to skip producing output).
         return 'crash'
     else:  # 'error'
-        # Error running specdiff - fall back to return code check
+        # Error running specdiff tools themselves - fall back to return code.
+        # If return code matches baseline, assume same (conservative).
         if fault_result.return_code != baseline_retcode:
             return 'crash'
         return 'same'
@@ -1165,7 +1425,7 @@ def run_single_experiment(args_tuple):
                               address, bit, exec_num, timeout, baseline_retcode,
                               baseline_stdout_hash, baseline_stderr_hash,
                               inst_disassembly, inst_routine, phase, worker_id,
-                              spec_path)
+                              spec_path, workload)
     
     Returns:
         Dict with experiment results
@@ -1174,7 +1434,11 @@ def run_single_experiment(args_tuple):
      address, bit, exec_num, timeout, baseline_retcode,
      baseline_stdout_hash, baseline_stderr_hash,
      inst_disassembly, inst_routine, phase, worker_id,
-     spec_path) = args_tuple
+     spec_path, workload) = args_tuple
+    
+    # Set the global workload for this worker process
+    global ACTIVE_WORKLOAD
+    ACTIVE_WORKLOAD = workload
     
     # Create a runner for this process
     runner = BenchmarkRunner(qemu_path, plugins_dir, benchmarks_dir)
@@ -1213,7 +1477,8 @@ def run_campaign(benchmark: str, runner: BenchmarkRunner, output_dir: str,
                 focus_routines: List[str], random_seed: int,
                 max_instructions: int, skip_profiling: bool,
                 profile_path: str, num_jobs: int,
-                spec_path: str = DEFAULT_SPEC_PATH):
+                spec_path: str = DEFAULT_SPEC_PATH,
+                workload: str = "refrate"):
     """
     Run a fault injection campaign for a SPEC2017 benchmark.
     
@@ -1232,12 +1497,22 @@ def run_campaign(benchmark: str, runner: BenchmarkRunner, output_dir: str,
         profile_path: Path to existing profile file
         num_jobs: Number of parallel jobs to run (default: 1 for sequential)
         spec_path: Path to SPEC2017 installation (for specdiff comparison)
+        workload: Workload size - 'refrate' (default) or 'test' (fast/small)
     """
+    # Set global workload so all functions pick it up
+    global ACTIVE_WORKLOAD
+    ACTIVE_WORKLOAD = workload
+    
+    # Set up test run directory if using test workload
+    if workload == "test":
+        test_dir = setup_test_run_dir(benchmark, runner.benchmarks_dir)
+        print(f"  Using test workload (fast inputs, test reference outputs)")
+    
     random.seed(random_seed)
     os.makedirs(output_dir, exist_ok=True)
     
     print(f"\n{'='*60}")
-    print(f"Fault Injection Campaign: {benchmark}")
+    print(f"Fault Injection Campaign: {benchmark} (workload: {workload})")
     print(f"{'='*60}")
     
     baseline_json_path = os.path.join(output_dir, 'baseline.json')
@@ -1434,7 +1709,8 @@ def run_campaign(benchmark: str, runner: BenchmarkRunner, output_dir: str,
             baseline_retcode, baseline_stdout_hash, baseline_stderr_hash,
             inst.disassembly, inst.routine, phase,
             exp_idx,  # worker_id - unique per experiment
-            spec_path  # SPEC2017 path for specdiff comparison
+            spec_path,  # SPEC2017 path for specdiff comparison
+            workload  # Workload type (refrate or test)
         ))
     
     if num_jobs == 1:
@@ -1502,10 +1778,11 @@ def run_campaign(benchmark: str, runner: BenchmarkRunner, output_dir: str,
                     result = future.result()
                 except Exception as e:
                     # Handle failed experiment
-                    # Args format: (qemu_path, plugins_dir, benchmarks_dir, benchmark,
+                    # Args format: (qemu_path[0], plugins_dir[1], benchmarks_dir[2], benchmark[3],
                     #               address[4], bit[5], exec_num[6], timeout[7], baseline_retcode[8],
                     #               baseline_stdout_hash[9], baseline_stderr_hash[10],
-                    #               inst_disassembly[11], inst_routine[12], phase[13], worker_id[14])
+                    #               inst_disassembly[11], inst_routine[12], phase[13],
+                    #               worker_id[14], spec_path[15], workload[16])
                     args = future_to_args[future]
                     result = {
                         'offset': args[4],        # address
@@ -1638,6 +1915,9 @@ Examples:
   # Full statistical campaign with max parallelism
   python3 run_campaign.py -b nab --phases 10 --samples-per-phase 5 --bits 32 -j $(nproc)
 
+  # Quick test with test workload (fast inputs for debugging)
+  python3 run_campaign.py -b nab -w test --phases 2 --samples-per-phase 1 --bits 4 --max-instructions 5 -j 10
+
 Available benchmarks:
   bwaves, cactuBSSN, namd, parest, povray, lbm, wrf, 
   blender, cam4, imagick, nab, fotonik3d, roms
@@ -1678,12 +1958,16 @@ Available benchmarks:
                        help='Skip profiling, use existing profile')
     parser.add_argument('--profile', default=None,
                        help='Path to existing profile CSV file')
+    parser.add_argument('--workload', '-w', default='refrate',
+                       choices=['refrate', 'test'],
+                       help='Workload size: refrate (default, full) or test (fast/small for debugging)')
     
     args = parser.parse_args()
     
     # Set default output directory
     if args.output is None:
-        args.output = os.path.join(SCRIPT_DIR, 'results', args.benchmark)
+        suffix = '_test' if args.workload == 'test' else ''
+        args.output = os.path.join(SCRIPT_DIR, 'results', args.benchmark + suffix)
     
     # Validate paths
     if not os.path.exists(args.qemu):
@@ -1731,7 +2015,8 @@ Available benchmarks:
         skip_profiling=args.skip_profiling,
         profile_path=args.profile,
         num_jobs=args.jobs,
-        spec_path=args.spec_path
+        spec_path=args.spec_path,
+        workload=args.workload
     )
 
 

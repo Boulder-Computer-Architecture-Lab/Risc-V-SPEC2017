@@ -14,13 +14,13 @@
 BEGIN {
     if ($ENV{'SPEC'} ne '') {
         unshift @INC, (
-            "/home/viji2154/FaultTolerance/SPEC2017/bin",
-            "/home/viji2154/FaultTolerance/SPEC2017/bin/lib",
+            "/home/maca9018/FaultTolerance/SPEC2017/bin",
+            "/home/maca9018/FaultTolerance/SPEC2017/bin/lib",
         );
     }
     unshift @INC, (
-        "/home/viji2154/FaultTolerance/SPEC2017/bin/common",
-        "/home/viji2154/FaultTolerance/SPEC2017/bin/harness",
+        "/home/maca9018 /FaultTolerance/SPEC2017/bin/common",
+        "/home/maca9018/FaultTolerance/SPEC2017/bin/harness",
     );
 }
 
