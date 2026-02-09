@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Set
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
+import lzma
 
 # Global lock for CSV writing in parallel mode
 CSV_LOCK = multiprocessing.Lock()
@@ -250,6 +251,8 @@ BENCHMARK_CONFIG = {
         "args": [],
         "stdin": None,
         "spec_num": "549.fotonik3d_r",
+        # OBJ.dat.xz must be decompressed before running (see inputgen.cmd)
+        "compressed_inputs": [("OBJ.dat.xz", "OBJ.dat")],
         "outputs": [
             ("pscyee.out", "pscyee.out"),
         ],
@@ -414,6 +417,20 @@ class BenchmarkRunner:
             config["binary"]
         ] + config["args"]
         
+        # Decompress any compressed input files (e.g., fotonik3d's OBJ.dat.xz -> OBJ.dat)
+        for compressed, decompressed in config.get("compressed_inputs", []):
+            decompressed_path = os.path.join(work_dir, decompressed)
+            compressed_path = os.path.join(work_dir, compressed)
+            if not os.path.exists(decompressed_path) and os.path.exists(compressed_path):
+                print(f"  Decompressing {compressed} -> {decompressed}")
+                try:
+                    with lzma.open(compressed_path) as f_in:
+                        with open(decompressed_path, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                except Exception as e:
+                    print(f"  ERROR: Failed to decompress {compressed}: {e}")
+                    return None, -3, "", f"Decompression failed: {e}"
+        
         print(f"Running profiler for {benchmark} (also capturing baseline output)...")
         print(f"  Working dir: {work_dir}")
         print(f"  Command: {' '.join(cmd)}")
@@ -562,6 +579,19 @@ class BenchmarkRunner:
                                 shutil.copytree(src, dst)
                 except Exception:
                     pass  # Ignore copy errors for non-essential files
+            
+            # Decompress any compressed input files in temp_dir
+            # (e.g., fotonik3d's OBJ.dat.xz -> OBJ.dat)
+            for compressed, decompressed in config.get("compressed_inputs", []):
+                compressed_path = os.path.join(temp_dir, compressed)
+                decompressed_path = os.path.join(temp_dir, decompressed)
+                if os.path.exists(compressed_path) and not os.path.exists(decompressed_path):
+                    try:
+                        with lzma.open(compressed_path) as f_in:
+                            with open(decompressed_path, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                    except Exception:
+                        pass  # Will likely cause benchmark to fail, classified as crash
             
             # Use Popen for better control over process termination
             proc = subprocess.Popen(
