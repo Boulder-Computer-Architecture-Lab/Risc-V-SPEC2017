@@ -49,7 +49,7 @@ DEFAULT_PLUGINS_DIR = os.path.join(SCRIPT_DIR, "qemu_pin")
 DEFAULT_BENCHMARKS_DIR = os.path.join(SCRIPT_DIR, "benchmarks")
 
 # SPEC2017 installation path (for specdiff and reference outputs)
-DEFAULT_SPEC_PATH = "/home/viji2154/FaultTolerance/Risc-V-SPEC2017/benchmarks/"
+DEFAULT_SPEC_PATH = DEFAULT_BENCHMARKS_DIR
 
 # Crash signals that indicate a real program crash (not normal exit)
 # These are the signals that QEMU propagates when the emulated program crashes

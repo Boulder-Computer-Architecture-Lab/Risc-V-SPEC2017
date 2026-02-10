@@ -12,15 +12,19 @@
 ##############################################################################
 
 BEGIN {
+    use File::Basename;
+    use Cwd 'abs_path';
+    # Derive bin dir from this script: bin/harness/specdiff -> bin/
+    my $bindir = dirname(dirname(abs_path($0)));
     if ($ENV{'SPEC'} ne '') {
         unshift @INC, (
-            "/home/maca9018/FaultTolerance/SPEC2017/bin",
-            "/home/maca9018/FaultTolerance/SPEC2017/bin/lib",
+            $bindir,
+            "$bindir/lib",
         );
     }
     unshift @INC, (
-        "/home/maca9018 /FaultTolerance/SPEC2017/bin/common",
-        "/home/maca9018/FaultTolerance/SPEC2017/bin/harness",
+        "$bindir/common",
+        "$bindir/harness",
     );
 }
 
